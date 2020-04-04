@@ -39,16 +39,17 @@ displayFrames = False
 screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.FULLSCREEN)
 backgroundColor = BLACK
 inputSize = 50
-n_particles = 5
-particleSize = 20
-particleSpawnRandom = True
-particleSpawnPos = [50, 50]
-particleSpawnVel = 1
-particleSpawnAngle = 1
+n_particles = 1
+particleSize = 25
+particleSpawnRandom = False
+particleSpawnPos = [960, 540]
+particleSpawnVel = 0
+particleSpawnAngle = 0
 particleColor = GREEN
+multiTouch = False
 drag = 0.999
 elasticity = 0.75
-gravity = (math.pi, 0.002)
+gravity = (math.pi, 0.000)
 fps = 144
 
 # Init camera
@@ -67,14 +68,6 @@ def addVectors(angleLength1, angleLength2):
     angle = 0.5 * math.pi - math.atan2(y, x)
     length = math.hypot(x, y)
     return angle, length
-
-
-# Find particle from input interaction
-def findParticle(ptc, x, y):
-    for p in ptc:
-        if math.hypot(p.x-x, p.y-y) <= p.radius:
-            return p
-    return None
 
 
 # Colliding game object particles
@@ -166,7 +159,6 @@ def main(frameWidth, frameHeight):
     pygame.init()
     clock = pygame.time.Clock()
     screen.blit(pygame.transform.scale(screen, (frameWidth, frameHeight)), (0, 0))
-    selectedParticle = None
     master = None
     minCoordinatesClusterA = [0, 0]
     minCoordinatesClusterB = [0, 0]
@@ -178,18 +170,18 @@ def main(frameWidth, frameHeight):
                 if event.type == KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         sys.exit(0)
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    mouseX, mouseY = pygame.mouse.get_pos()
-                    selectedParticle = findParticle(particles, mouseX, mouseY)
-                elif event.type == pygame.MOUSEBUTTONUP:
-                    selectedParticle = None
 
-            if selectedParticle:
-                (mouseX, mouseY) = pygame.mouse.get_pos()
-                dx = mouseX - selectedParticle.x
-                dy = mouseY - selectedParticle.y
-                selectedParticle.angle = 0.5 * math.pi + math.atan2(dy, dx)
-                selectedParticle.velocity = math.hypot(dx, dy) * 0.1
+            # Update position for input 1 and input 2
+            dx1 = minCoordinatesClusterA[0] - particles[0].x
+            dy1 = minCoordinatesClusterA[1] - particles[0].y
+            particles[0].angle = 0.5 * math.pi + math.atan2(dy1, dx1)
+            particles[0].velocity = math.hypot(dx1, dy1) * 0.1
+
+            if multiTouch:
+                dx2 = minCoordinatesClusterB[0] - particles[1].x
+                dy2 = minCoordinatesClusterB[1] - particles[1].y
+                particles[1].angle = 0.5 * math.pi + math.atan2(dy2, dx2)
+                particles[1].velocity = math.hypot(dx2, dy2) * 0.1
 
             screen.fill(backgroundColor)
 
@@ -235,7 +227,7 @@ def main(frameWidth, frameHeight):
                 idx = 0
                 for i in clusterA:
                     coordinatesClusterA = i
-                    distanceListClusterA.append(math.sqrt((particles[2].x - coordinatesClusterA[0]) ** 2 + (particles[2].y - coordinatesClusterA[1]) ** 2))
+                    distanceListClusterA.append(math.sqrt((particles[1+skipIdx].x - coordinatesClusterA[0]) ** 2 + (particles[1+skipIdx].y - coordinatesClusterA[1]) ** 2))
                     if distanceListClusterA[idx] < distanceListClusterA[idx - 1]:
                         minCoordinatesClusterA = coordinatesClusterA
                     if showContours:
@@ -245,7 +237,7 @@ def main(frameWidth, frameHeight):
                 idx = 0
                 for i in clusterB:
                     coordinatesClusterB = i
-                    distanceListClusterB.append(math.sqrt((particles[2].x - coordinatesClusterB[0]) ** 2 + (particles[2].y - coordinatesClusterB[1]) ** 2))
+                    distanceListClusterB.append(math.sqrt((particles[1+skipIdx].x - coordinatesClusterB[0]) ** 2 + (particles[1+skipIdx].y - coordinatesClusterB[1]) ** 2))
                     if distanceListClusterB[idx] < distanceListClusterB[idx - 1]:
                         minCoordinatesClusterB = coordinatesClusterB
                     if showContours:
@@ -254,14 +246,11 @@ def main(frameWidth, frameHeight):
 
                 if showCentroid:
                     particles[0].drawCenter(GOLD, center[0]) # Render centroid cluster A
-                    particles[1].drawCenter(GOLD, center[1]) # Render centroid cluster B
+                    if multiTouch:
+                        particles[1].drawCenter(GOLD, center[1]) # Render centroid cluster B
 
             # Render and animate game object
             for i, ptc in enumerate(particles):
-                if i == 0:
-                    ptc.x, ptc.y = minCoordinatesClusterA # Update position for input 1
-                if i == 1:
-                    ptc.x, ptc.y = minCoordinatesClusterB # Update position for input 2
                 ptc.move()
                 ptc.bounce()
                 for ptc2 in particles[i + 1:]:
@@ -286,9 +275,12 @@ def main(frameWidth, frameHeight):
 if __name__ == '__main__':
     particles = []
     input1 = Gameobject([0, 0], 0, 0, inputSize, RED)  # Init player input 1
-    input2 = Gameobject([0, 0], 0, 0, inputSize, BLUE)  # Init player input 2
     particles.append(input1)
-    particles.append(input2)
+    skipIdx = 0
+    if multiTouch:
+        input2 = Gameobject([0, 0], 0, 0, inputSize, BLUE)  # Init player input 2
+        particles.append(input2)
+        skipIdx = 1
     for n in range(n_particles):
         if particleSpawnRandom:
             particleSpawnPos = [random.randint(particleSize, width - particleSize), random.randint(particleSize, height - particleSize)]
