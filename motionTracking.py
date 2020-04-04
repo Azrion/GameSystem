@@ -24,7 +24,7 @@ fullHD = False
 width = 1920
 height = 1080
 time.sleep(0.5)
-gaussianBlurKSize = (21, 21)
+gaussianBlurKSize = (21, 21) # Odd number required
 thresholdValue = 10
 thresholdMaxValue = 255
 erodingIter = 4
@@ -43,12 +43,14 @@ n_particles = 1
 particleSize = 25
 particleSpawnRandom = False
 particleSpawnPos = [960, 540]
-particleSpawnVel = 0
-particleSpawnAngle = 0
+particleSpawnVel = 0 # Between 0 and 1
+particleSpawnAngle = 0 # Between 0 and PI*2
 particleColor = GREEN
 multiTouch = False
-drag = 0.999
-elasticity = 0.75
+inputDrag = 0.5 # Between 0 and 1
+inputSpeed = 1 # Between 0 and 1
+drag = 0.999 # Between 0 and 1
+elasticity = 0.75 # Between 0 and 1
 gravity = (math.pi, 0.000)
 fps = 144
 
@@ -174,14 +176,14 @@ def main(frameWidth, frameHeight):
             # Update position for input 1 and input 2
             dx1 = minCoordinatesClusterA[0] - particles[0].x
             dy1 = minCoordinatesClusterA[1] - particles[0].y
-            particles[0].angle = 0.5 * math.pi + math.atan2(dy1, dx1)
-            particles[0].velocity = math.hypot(dx1, dy1) * 0.1
+            particles[0].angle = inputDrag * math.pi + math.atan2(dy1, dx1)
+            particles[0].velocity = math.hypot(dx1, dy1) * inputSpeed
 
             if multiTouch:
                 dx2 = minCoordinatesClusterB[0] - particles[1].x
                 dy2 = minCoordinatesClusterB[1] - particles[1].y
-                particles[1].angle = 0.5 * math.pi + math.atan2(dy2, dx2)
-                particles[1].velocity = math.hypot(dx2, dy2) * 0.1
+                particles[1].angle = inputDrag * math.pi + math.atan2(dy2, dx2)
+                particles[1].velocity = math.hypot(dx2, dy2) * inputSpeed
 
             screen.fill(backgroundColor)
 
