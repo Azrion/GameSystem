@@ -20,14 +20,8 @@ SILVER = (192, 192, 192)
 
 # Camera Settings
 fullHD = True
-if fullHD:
-    camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-else:
-    camera = cv2.VideoCapture(0)
 width = 1920
 height = 1080
-camera.set(3, width)
-camera.set(4, height)
 time.sleep(0.5)
 gaussianBlurKSize = (21, 21)
 thresholdValue = 10
@@ -43,6 +37,14 @@ clock = pygame.time.Clock()
 screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.FULLSCREEN)
 backgroundColor = BLACK
 fps = 60
+
+# Init camera
+if fullHD:
+    camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+else:
+    camera = cv2.VideoCapture(0)
+camera.set(3, width)
+camera.set(4, height)
 
 
 # Define game object class
@@ -89,11 +91,8 @@ def displayAllFrames(frame):
 def main(frameWidth, frameHeight):
     screen.blit(pygame.transform.scale(screen, (frameWidth, frameHeight)), (0, 0))
     master = None
-    # minCoordinates = [0, 0]
     minCoordinatesClusterA = [0, 0]
     minCoordinatesClusterB = [0, 0]
-    # groupedX = 0
-    # groupedY = 0
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, clusteringIter, clusteringEpsilon) # Define criteria for kmeans
 
     try:
@@ -137,12 +136,6 @@ def main(frameWidth, frameHeight):
                     for j in range(len(i)):
                         coordinates = i[j][0]
                         groupedListXY.append(coordinates)
-                        # distanceList.append(math.sqrt((rigidbody.x - coordinates[0]) ** 2 + (rigidbody.y - coordinates[1]) ** 2))
-                        # if distanceList[j] < distanceList[j - 1]:
-                        #     minCoordinates = coordinates
-                        # pygame.draw.circle(screen, WHITE, coordinates, 1, 0) # Render contour points
-                # groupedX = np.median([i[0] for i in groupedListXY])
-                # groupedY = np.median([i[1] for i in groupedListXY])
 
                 groupedListXY = np.float32(groupedListXY)
                 ret, label, center = cv2.kmeans(groupedListXY, 2, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS) # Apply kmeans
@@ -167,8 +160,6 @@ def main(frameWidth, frameHeight):
                 for i in center:
                     pygame.draw.circle(screen, GOLD, i, 15, 0) # Render centroid
 
-            # pygame.draw.circle(screen, RED, [int(round(groupedX)), int(round(groupedY))], 15, 0)  # Render grouped point of all contour points
-            # pygame.draw.circle(screen, BLUE, minCoordinates, 50, 0)  # Render closest contour point to game object
             pygame.draw.circle(screen, RED, minCoordinatesClusterA, 50, 0)  # Render closest contour point of cluster A to game object
             pygame.draw.circle(screen, BLUE, minCoordinatesClusterB, 50, 0)  # Render closest contour point of cluster A to game object
 
