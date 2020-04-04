@@ -19,7 +19,11 @@ GOLD = (255, 215, 0)
 SILVER = (192, 192, 192)
 
 # Camera Settings
-camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+fullHD = True
+if fullHD:
+    camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+else:
+    camera = cv2.VideoCapture(0)
 width = 1920
 height = 1080
 camera.set(3, width)
@@ -30,6 +34,8 @@ thresholdValue = 10
 thresholdMaxValue = 255
 erodingIter = 4
 dilatingIter = 8
+clusteringIter = 10
+clusteringEpsilon = 1.0
 displayFrames = False
 
 # Game settings
@@ -83,9 +89,12 @@ def displayAllFrames(frame):
 def main(frameWidth, frameHeight):
     screen.blit(pygame.transform.scale(screen, (frameWidth, frameHeight)), (0, 0))
     master = None
-    minCoordinates = [0, 0]
-    groupedX = 0
-    groupedY = 0
+    # minCoordinates = [0, 0]
+    minCoordinatesClusterA = [0, 0]
+    minCoordinatesClusterB = [0, 0]
+    # groupedX = 0
+    # groupedY = 0
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, clusteringIter, clusteringEpsilon) # Define criteria for kmeans
 
     try:
         while True:
@@ -120,23 +129,48 @@ def main(frameWidth, frameHeight):
             nada, contours, nada = cv2.findContours(frame5.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             if len(contours) != 0:
-                groupedListX = []
-                groupedListY = []
-                distanceList = []
+                groupedListXY = []
+                # distanceList = []
+                distanceListClusterA = []
+                distanceListClusterB = []
                 for i in contours:
                     for j in range(len(i)):
                         coordinates = i[j][0]
-                        distanceList.append(math.sqrt((rigidbody.x - coordinates[0]) ** 2 + (rigidbody.y - coordinates[1]) ** 2))
-                        groupedListX.append(coordinates[0])
-                        groupedListY.append(coordinates[1])
-                        pygame.draw.circle(screen, WHITE, coordinates, 1, 0)
-                        if distanceList[j] < distanceList[j - 1]:
-                            minCoordinates = coordinates
-                    groupedX = np.median(groupedListX)
-                    groupedY = np.median(groupedListY)
+                        groupedListXY.append(coordinates)
+                        # distanceList.append(math.sqrt((rigidbody.x - coordinates[0]) ** 2 + (rigidbody.y - coordinates[1]) ** 2))
+                        # if distanceList[j] < distanceList[j - 1]:
+                        #     minCoordinates = coordinates
+                        # pygame.draw.circle(screen, WHITE, coordinates, 1, 0) # Render contour points
+                # groupedX = np.median([i[0] for i in groupedListXY])
+                # groupedY = np.median([i[1] for i in groupedListXY])
 
-            pygame.draw.circle(screen, RED, [int(round(groupedX)), int(round(groupedY))], 15, 0)  # Render grouped point of all contour points
-            pygame.draw.circle(screen, BLUE, minCoordinates, 50, 0)  # Render closest contour point to game object
+                groupedListXY = np.float32(groupedListXY)
+                ret, label, center = cv2.kmeans(groupedListXY, 2, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS) # Apply kmeans
+                clusterA = groupedListXY[label.ravel() == 0]
+                clusterB = groupedListXY[label.ravel() == 1]
+                idx = 0
+                for i in clusterA:
+                    coordinatesClusterA = i
+                    distanceListClusterA.append(math.sqrt((rigidbody.x - coordinatesClusterA[0]) ** 2 + (rigidbody.y - coordinatesClusterA[1]) ** 2))
+                    if distanceListClusterA[idx] < distanceListClusterA[idx - 1]:
+                        minCoordinatesClusterA = coordinatesClusterA
+                    pygame.draw.circle(screen, RED, coordinatesClusterA, 1, 0) # Render cluster A
+                    idx += 1
+                idx = 0
+                for i in clusterB:
+                    coordinatesClusterB = i
+                    distanceListClusterB.append(math.sqrt((rigidbody.x - coordinatesClusterB[0]) ** 2 + (rigidbody.y - coordinatesClusterB[1]) ** 2))
+                    if distanceListClusterB[idx] < distanceListClusterB[idx - 1]:
+                        minCoordinatesClusterB = coordinatesClusterB
+                    pygame.draw.circle(screen, BLUE, coordinatesClusterB, 1, 0) # Render cluster B
+                    idx += 1
+                for i in center:
+                    pygame.draw.circle(screen, GOLD, i, 15, 0) # Render centroid
+
+            # pygame.draw.circle(screen, RED, [int(round(groupedX)), int(round(groupedY))], 15, 0)  # Render grouped point of all contour points
+            # pygame.draw.circle(screen, BLUE, minCoordinates, 50, 0)  # Render closest contour point to game object
+            pygame.draw.circle(screen, RED, minCoordinatesClusterA, 50, 0)  # Render closest contour point of cluster A to game object
+            pygame.draw.circle(screen, BLUE, minCoordinatesClusterB, 50, 0)  # Render closest contour point of cluster A to game object
 
             # Update master
             master = frame2
