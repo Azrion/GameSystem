@@ -19,7 +19,7 @@ GOLD = (255, 215, 0)
 SILVER = (192, 192, 192)
 
 # Camera Settings
-fullHD = True
+fullHD = False
 width = 1920
 height = 1080
 time.sleep(0.5)
@@ -30,10 +30,11 @@ erodingIter = 4
 dilatingIter = 8
 clusteringIter = 10
 clusteringEpsilon = 1.0
+showContours = True
+showCentroid = True
 displayFrames = False
 
 # Game settings
-clock = pygame.time.Clock()
 screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.FULLSCREEN)
 backgroundColor = BLACK
 fps = 60
@@ -48,21 +49,20 @@ camera.set(4, height)
 
 
 # Define game object class
-class Rigidbody:
+class Gameobject:
     def __init__(self, coordinates, velocity, theta, radius, objectColor):
-        self.x = coordinates[0]
-        self.y = coordinates[1]
+        self.coordinates = coordinates
         self.velocity = velocity
         self.theta = theta
         self.radius = radius
         self.objectColor = objectColor
 
     def draw(self):
-        pygame.draw.circle(screen, self.objectColor, (int(round(self.x)), int(round(self.y))), self.radius)
+        pygame.draw.circle(screen, self.objectColor, (int(round(self.coordinates[0])), int(round(self.coordinates[1]))), self.radius)
 
     def move(self):
-        self.x += self.velocity * np.cos(self.theta)
-        self.y += self.velocity * np.sin(self.theta)
+        self.coordinates[0] += self.velocity * np.cos(self.theta)
+        self.coordinates[1] += self.velocity * np.sin(self.theta)
 
 
 # Define game boundary class
@@ -75,6 +75,26 @@ class Boundary:
 
     def draw(self):
         pygame.draw.line(screen, self.objectColor, self.startPoint, self.endPoint, self.size)
+
+
+# Define player input class
+class Input:
+    def __init__(self, coordinates, velocity, theta, radius, objectColor):
+        self.coordinates = coordinates
+        self.velocity = velocity
+        self.theta = theta
+        self.radius = radius
+        self.objectColor = objectColor
+        self.centerColor = None
+        self.centerCoordinates = None
+
+    def draw(self):
+        pygame.draw.circle(screen, self.objectColor, (int(round(self.coordinates[0])), int(round(self.coordinates[1]))), self.radius)
+
+    def drawCenter(self, centerColor, centerCoordinates):
+        self.centerColor = centerColor
+        self.centerCoordinates = centerCoordinates
+        pygame.draw.circle(screen, self.centerColor, (int(round(self.centerCoordinates[0])), int(round(self.centerCoordinates[1]))), int(round(self.radius/2)))
 
 
 # Display frames
@@ -121,17 +141,17 @@ def main(frameWidth, frameHeight):
             frame5 = cv2.dilate(frame5, kernel, iterations=dilatingIter)
 
             # Render and animate game object
-            rigidbody.draw()
-            rigidbody.move()
+            gameObject.draw()
+            gameObject.move()
 
             # Find contours on thresholded image
             nada, contours, nada = cv2.findContours(frame5.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             if len(contours) != 0:
                 groupedListXY = []
-                # distanceList = []
                 distanceListClusterA = []
                 distanceListClusterB = []
+
                 for i in contours:
                     for j in range(len(i)):
                         coordinates = i[j][0]
@@ -141,32 +161,38 @@ def main(frameWidth, frameHeight):
                 ret, label, center = cv2.kmeans(groupedListXY, 2, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS) # Apply kmeans
                 clusterA = groupedListXY[label.ravel() == 0]
                 clusterB = groupedListXY[label.ravel() == 1]
+
                 idx = 0
                 for i in clusterA:
                     coordinatesClusterA = i
-                    distanceListClusterA.append(math.sqrt((rigidbody.x - coordinatesClusterA[0]) ** 2 + (rigidbody.y - coordinatesClusterA[1]) ** 2))
+                    distanceListClusterA.append(math.sqrt((gameObject.coordinates[0] - coordinatesClusterA[0]) ** 2 + (gameObject.coordinates[1] - coordinatesClusterA[1]) ** 2))
                     if distanceListClusterA[idx] < distanceListClusterA[idx - 1]:
                         minCoordinatesClusterA = coordinatesClusterA
-                    pygame.draw.circle(screen, RED, coordinatesClusterA, 1, 0) # Render cluster A
+                    if showContours:
+                        pygame.draw.circle(screen, RED, (int(round(coordinatesClusterA[0])), int(round(coordinatesClusterA[1]))), 1) # Render cluster A
                     idx += 1
+
                 idx = 0
                 for i in clusterB:
                     coordinatesClusterB = i
-                    distanceListClusterB.append(math.sqrt((rigidbody.x - coordinatesClusterB[0]) ** 2 + (rigidbody.y - coordinatesClusterB[1]) ** 2))
+                    distanceListClusterB.append(math.sqrt((gameObject.coordinates[0] - coordinatesClusterB[0]) ** 2 + (gameObject.coordinates[1] - coordinatesClusterB[1]) ** 2))
                     if distanceListClusterB[idx] < distanceListClusterB[idx - 1]:
                         minCoordinatesClusterB = coordinatesClusterB
-                    pygame.draw.circle(screen, BLUE, coordinatesClusterB, 1, 0) # Render cluster B
+                    if showContours:
+                        pygame.draw.circle(screen, BLUE, (int(round(coordinatesClusterB[0])), int(round(coordinatesClusterB[1]))), 1) # Render cluster B
                     idx += 1
-                for i in center:
-                    pygame.draw.circle(screen, GOLD, i, 15, 0) # Render centroid
 
-            pygame.draw.circle(screen, RED, minCoordinatesClusterA, 50, 0)  # Render closest contour point of cluster A to game object
-            pygame.draw.circle(screen, BLUE, minCoordinatesClusterB, 50, 0)  # Render closest contour point of cluster A to game object
+                if showCentroid:
+                    input1.drawCenter(GOLD, center[0]) # Render centroid cluster A
+                    input2.drawCenter(GOLD, center[1]) # Render centroid cluster B
 
-            # Update master
-            master = frame2
+            input1.coordinates = minCoordinatesClusterA
+            input1.draw() # Render closest contour point of cluster A to game object
+            input2.coordinates = minCoordinatesClusterB
+            input2.draw() # Render closest contour point of cluster B to game object
 
-            # Display frames
+            master = frame2 # Update master
+
             if displayFrames:
                 displayAllFrames([frame0, frame1, frame2, frame3, frame4, frame5])
 
@@ -185,6 +211,9 @@ def main(frameWidth, frameHeight):
 
 
 if __name__ == '__main__':
-    rigidbody = Rigidbody([50, 50], 3, 0, 50, GREEN) # Init game object
+    gameObject = Gameobject([50, 50], 3, 0, 50, GREEN) # Init game object
+    input1 = Input([0, 0], 3, 0, 50, RED) # Init player input 1
+    input2 = Input([0, 0], 3, 0, 50, BLUE) # Init player input 2
     pygame.init()
+    clock = pygame.time.Clock()
     main(width, height)
