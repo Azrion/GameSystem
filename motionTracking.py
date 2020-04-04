@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import math
+import random
 import numpy as np
 import cv2
 import pygame
@@ -37,7 +38,18 @@ displayFrames = False
 # Game settings
 screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.FULLSCREEN)
 backgroundColor = BLACK
-fps = 60
+inputSize = 50
+n_particles = 5
+particleSize = 20
+particleSpawnRandom = True
+particleSpawnPos = [50, 50]
+particleSpawnVel = 1
+particleSpawnAngle = 1
+particleColor = GREEN
+drag = 0.999
+elasticity = 0.75
+gravity = (math.pi, 0.002)
+fps = 144
 
 # Init camera
 if fullHD:
@@ -48,53 +60,95 @@ camera.set(3, width)
 camera.set(4, height)
 
 
+# Combine vectors for movement calculation
+def addVectors(angleLength1, angleLength2):
+    x = math.sin(angleLength1[0]) * angleLength1[1] + math.sin(angleLength2[0]) * angleLength2[1]
+    y = math.cos(angleLength1[0]) * angleLength1[1] + math.cos(angleLength2[0]) * angleLength2[1]
+    angle = 0.5 * math.pi - math.atan2(y, x)
+    length = math.hypot(x, y)
+    return angle, length
+
+
+# Find particle from input interaction
+def findParticle(ptc, x, y):
+    for p in ptc:
+        if math.hypot(p.x-x, p.y-y) <= p.radius:
+            return p
+    return None
+
+
+# Colliding game object particles
+def collide(p1, p2):
+    dx = p1.x - p2.x
+    dy = p1.y - p2.y
+
+    dist = math.hypot(dx, dy)
+    if dist < p1.radius + p2.radius:
+        tangent = math.atan2(dy, dx)
+        angle = 0.5 * math.pi + tangent
+
+        angle1 = 2 * tangent - p1.angle
+        angle2 = 2 * tangent - p2.angle
+        speed1 = p2.velocity * elasticity
+        speed2 = p1.velocity * elasticity
+
+        (p1.angle, p1.velocity) = (angle1, speed1)
+        (p2.angle, p2.velocity) = (angle2, speed2)
+
+        p1.x += math.sin(angle)
+        p1.y -= math.cos(angle)
+        p2.x -= math.sin(angle)
+        p2.y += math.cos(angle)
+
+
 # Define game object class
 class Gameobject:
-    def __init__(self, coordinates, velocity, theta, radius, objectColor):
-        self.coordinates = coordinates
+    def __init__(self, coordinates, velocity, angle, radius, objectColor):
+        self.x = coordinates[0]
+        self.y = coordinates[1]
         self.velocity = velocity
-        self.theta = theta
-        self.radius = radius
-        self.objectColor = objectColor
-
-    def draw(self):
-        pygame.draw.circle(screen, self.objectColor, (int(round(self.coordinates[0])), int(round(self.coordinates[1]))), self.radius)
-
-    def move(self):
-        self.coordinates[0] += self.velocity * np.cos(self.theta)
-        self.coordinates[1] += self.velocity * np.sin(self.theta)
-
-
-# Define game boundary class
-class Boundary:
-    def __init__(self, startPoint, endPoint, objectColor, size):
-        self.startPoint = startPoint
-        self.endPoint = endPoint
-        self.objectColor = objectColor
-        self.size = size
-
-    def draw(self):
-        pygame.draw.line(screen, self.objectColor, self.startPoint, self.endPoint, self.size)
-
-
-# Define player input class
-class Input:
-    def __init__(self, coordinates, velocity, theta, radius, objectColor):
-        self.coordinates = coordinates
-        self.velocity = velocity
-        self.theta = theta
+        self.angle = angle
         self.radius = radius
         self.objectColor = objectColor
         self.centerColor = None
-        self.centerCoordinates = None
+        self.centerX = None
+        self.centerY = None
 
     def draw(self):
-        pygame.draw.circle(screen, self.objectColor, (int(round(self.coordinates[0])), int(round(self.coordinates[1]))), self.radius)
+        pygame.draw.circle(screen, self.objectColor, (int(round(self.x)), int(round(self.y))), self.radius)
+
+    def move(self):
+        self.angle, self.velocity = addVectors((self.angle, self.velocity), gravity)
+        self.x += math.sin(self.angle) * self.velocity
+        self.y -= math.cos(self.angle) * self.velocity
+        self.velocity *= drag
+
+    def bounce(self):
+        if self.x > width - self.radius:
+            self.x = 2 * (width - self.radius) - self.x
+            self.angle = - self.angle
+            self.velocity *= elasticity
+
+        elif self.x < self.radius:
+            self.x = 2 * self.radius - self.x
+            self.angle = - self.angle
+            self.velocity *= elasticity
+
+        if self.y > height - self.radius:
+            self.y = 2 * (height - self.radius) - self.y
+            self.angle = math.pi - self.angle
+            self.velocity *= elasticity
+
+        elif self.y < self.radius:
+            self.y = 2 * self.radius - self.y
+            self.angle = math.pi - self.angle
+            self.velocity *= elasticity
 
     def drawCenter(self, centerColor, centerCoordinates):
         self.centerColor = centerColor
-        self.centerCoordinates = centerCoordinates
-        pygame.draw.circle(screen, self.centerColor, (int(round(self.centerCoordinates[0])), int(round(self.centerCoordinates[1]))), int(round(self.radius/2)))
+        self.centerX = centerCoordinates[0]
+        self.centerY = centerCoordinates[1]
+        pygame.draw.circle(screen, self.centerColor, (int(round(self.centerX)), int(round(self.centerY))), int(round(self.radius/2)))
 
 
 # Display frames
@@ -109,7 +163,10 @@ def displayAllFrames(frame):
 
 # Game simulator
 def main(frameWidth, frameHeight):
+    pygame.init()
+    clock = pygame.time.Clock()
     screen.blit(pygame.transform.scale(screen, (frameWidth, frameHeight)), (0, 0))
+    selectedParticle = None
     master = None
     minCoordinatesClusterA = [0, 0]
     minCoordinatesClusterB = [0, 0]
@@ -117,6 +174,23 @@ def main(frameWidth, frameHeight):
 
     try:
         while True:
+            for event in pygame.event.get():
+                if event.type == KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        sys.exit(0)
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    mouseX, mouseY = pygame.mouse.get_pos()
+                    selectedParticle = findParticle(particles, mouseX, mouseY)
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    selectedParticle = None
+
+            if selectedParticle:
+                (mouseX, mouseY) = pygame.mouse.get_pos()
+                dx = mouseX - selectedParticle.x
+                dy = mouseY - selectedParticle.y
+                selectedParticle.angle = 0.5 * math.pi + math.atan2(dy, dx)
+                selectedParticle.velocity = math.hypot(dx, dy) * 0.1
+
             screen.fill(backgroundColor)
 
             (grabbed, frame0) = camera.read()  # Grab a frame
@@ -140,10 +214,6 @@ def main(frameWidth, frameHeight):
             frame5 = cv2.erode(frame4, kernel, iterations=erodingIter)
             frame5 = cv2.dilate(frame5, kernel, iterations=dilatingIter)
 
-            # Render and animate game object
-            gameObject.draw()
-            gameObject.move()
-
             # Find contours on thresholded image
             nada, contours, nada = cv2.findContours(frame5.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -165,7 +235,7 @@ def main(frameWidth, frameHeight):
                 idx = 0
                 for i in clusterA:
                     coordinatesClusterA = i
-                    distanceListClusterA.append(math.sqrt((gameObject.coordinates[0] - coordinatesClusterA[0]) ** 2 + (gameObject.coordinates[1] - coordinatesClusterA[1]) ** 2))
+                    distanceListClusterA.append(math.sqrt((particles[2].x - coordinatesClusterA[0]) ** 2 + (particles[2].y - coordinatesClusterA[1]) ** 2))
                     if distanceListClusterA[idx] < distanceListClusterA[idx - 1]:
                         minCoordinatesClusterA = coordinatesClusterA
                     if showContours:
@@ -175,7 +245,7 @@ def main(frameWidth, frameHeight):
                 idx = 0
                 for i in clusterB:
                     coordinatesClusterB = i
-                    distanceListClusterB.append(math.sqrt((gameObject.coordinates[0] - coordinatesClusterB[0]) ** 2 + (gameObject.coordinates[1] - coordinatesClusterB[1]) ** 2))
+                    distanceListClusterB.append(math.sqrt((particles[2].x - coordinatesClusterB[0]) ** 2 + (particles[2].y - coordinatesClusterB[1]) ** 2))
                     if distanceListClusterB[idx] < distanceListClusterB[idx - 1]:
                         minCoordinatesClusterB = coordinatesClusterB
                     if showContours:
@@ -183,13 +253,20 @@ def main(frameWidth, frameHeight):
                     idx += 1
 
                 if showCentroid:
-                    input1.drawCenter(GOLD, center[0]) # Render centroid cluster A
-                    input2.drawCenter(GOLD, center[1]) # Render centroid cluster B
+                    particles[0].drawCenter(GOLD, center[0]) # Render centroid cluster A
+                    particles[1].drawCenter(GOLD, center[1]) # Render centroid cluster B
 
-            input1.coordinates = minCoordinatesClusterA
-            input1.draw() # Render closest contour point of cluster A to game object
-            input2.coordinates = minCoordinatesClusterB
-            input2.draw() # Render closest contour point of cluster B to game object
+            # Render and animate game object
+            for i, ptc in enumerate(particles):
+                if i == 0:
+                    ptc.x, ptc.y = minCoordinatesClusterA # Update position for input 1
+                if i == 1:
+                    ptc.x, ptc.y = minCoordinatesClusterB # Update position for input 2
+                ptc.move()
+                ptc.bounce()
+                for ptc2 in particles[i + 1:]:
+                    collide(ptc, ptc2)
+                ptc.draw()
 
             master = frame2 # Update master
 
@@ -197,12 +274,7 @@ def main(frameWidth, frameHeight):
                 displayAllFrames([frame0, frame1, frame2, frame3, frame4, frame5])
 
             clock.tick(fps)
-            pygame.display.update()
-
-            for event in pygame.event.get():
-                if event.type == KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        sys.exit(0)
+            pygame.display.flip()
 
     except (KeyboardInterrupt, SystemExit):
         pygame.quit() # Close simulator
@@ -210,10 +282,18 @@ def main(frameWidth, frameHeight):
         cv2.destroyAllWindows() # Close all windows
 
 
+# Main function
 if __name__ == '__main__':
-    gameObject = Gameobject([50, 50], 3, 0, 50, GREEN) # Init game object
-    input1 = Input([0, 0], 3, 0, 50, RED) # Init player input 1
-    input2 = Input([0, 0], 3, 0, 50, BLUE) # Init player input 2
-    pygame.init()
-    clock = pygame.time.Clock()
+    particles = []
+    input1 = Gameobject([0, 0], 0, 0, inputSize, RED)  # Init player input 1
+    input2 = Gameobject([0, 0], 0, 0, inputSize, BLUE)  # Init player input 2
+    particles.append(input1)
+    particles.append(input2)
+    for n in range(n_particles):
+        if particleSpawnRandom:
+            particleSpawnPos = [random.randint(particleSize, width - particleSize), random.randint(particleSize, height - particleSize)]
+            particleSpawnVel = random.random()
+            particleSpawnAngle = random.uniform(0, math.pi * 2)
+        particle = Gameobject(particleSpawnPos, particleSpawnVel, particleSpawnAngle, particleSize, particleColor) # Init game object particle
+        particles.append(particle)
     main(width, height)
