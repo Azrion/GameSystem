@@ -72,8 +72,11 @@ def displayAllFrames(frame):
 def main(frameWidth, frameHeight):
     screen.blit(pygame.transform.scale(screen, (frameWidth, frameHeight)), (0, 0))
     master = None
-    minCoordinates = [0, 0]
-    minDistance = float('inf')
+    minCoordinatesA = [0, 0]
+    minCoordinatesB = [0, 0]
+    minDistanceA = float('inf')
+    minDistanceB = float('inf')
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)  # Define criteria for kmeans
 
     try:
         while True:
@@ -106,18 +109,45 @@ def main(frameWidth, frameHeight):
             # Find contours on thresholded image
             nada, contours, nada = cv2.findContours(frame5.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+            distanceListA = []
+            distanceListB = []
+
             if len(contours) != 0:
-                distanceList = []
+                groupedListXY = []
+
                 for i in contours:
                     for j in range(len(i)):
                         coordinates = i[j][0]
-                        distanceList.append(math.sqrt((rigidbody.x - coordinates[0]) ** 2 + (rigidbody.y - coordinates[1]) ** 2))
-                        pygame.draw.circle(screen, WHITE, coordinates, 1, 0) # Render contour points
-                        if distanceList[-1] < minDistance:
-                            minDistance = distanceList[-1]
-                            minCoordinates = coordinates
-                pygame.draw.circle(screen, BLUE, minCoordinates, 50, 0) # Render closest contour point to game object
-                minDistance = float('inf')
+                        groupedListXY.append(coordinates)
+
+                groupedListXY = np.float32(groupedListXY)
+                ret, label, center = cv2.kmeans(groupedListXY, 2, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS) # Apply kmeans
+                clusterA = groupedListXY[label.ravel() == 0] # Cluster Input A
+                clusterB = groupedListXY[label.ravel() == 1] # Cluster Input B
+
+            if len(clusterA) != 0:
+                for i in clusterA:
+                    coordinates = i
+                    distanceListA.append(math.sqrt((rigidbody.x - coordinates[0]) ** 2 + (rigidbody.y - coordinates[1]) ** 2))
+                    pygame.draw.circle(screen, RED, coordinates, 1, 0) # Render cluster A
+                    if distanceListA[-1] < minDistanceA:
+                        minDistanceA = distanceListA[-1]
+                        minCoordinatesA = coordinates
+                pygame.draw.circle(screen, RED, minCoordinatesA, 50, 0) # Render cluster A closest Point
+                minDistanceA = float('inf')
+            pygame.draw.circle(screen, GOLD, (int(round(center[0][0])), int(round(center[0][1]))), 25)  # Render centroid cluster A
+
+            if len(clusterB) != 0:
+                for i in clusterB:
+                    coordinates = i
+                    distanceListB.append(math.sqrt((rigidbody.x - coordinates[0]) ** 2 + (rigidbody.y - coordinates[1]) ** 2))
+                    pygame.draw.circle(screen, BLUE, coordinates, 1, 0) # Render cluster B
+                    if distanceListB[-1] < minDistanceB:
+                        minDistanceB = distanceListB[-1]
+                        minCoordinatesB = coordinates
+                pygame.draw.circle(screen, BLUE, minCoordinatesB, 50, 0) # Render cluster B closest Point
+                minDistanceB = float('inf')
+            pygame.draw.circle(screen, GOLD, (int(round(center[1][0])), int(round(center[1][1]))), 25)  # Render centroid cluster B
 
             # Update master
             master = frame2

@@ -91,7 +91,6 @@ def motionTrackingProcess(in_queue, out_queue, sIdx):
                 if multiTouch:
                     clusterB = groupedListXY[label.ravel() == 1] # Cluster Input B
 
-                idx = 0
                 for i in clusterA:
                     coordinatesClusterA = i
                     distanceListClusterA.append(math.sqrt((ptcCoordinates[1+sIdx][0] - coordinatesClusterA[0]) ** 2 + (ptcCoordinates[1+sIdx][0] - coordinatesClusterA[1]) ** 2))
@@ -100,10 +99,8 @@ def motionTrackingProcess(in_queue, out_queue, sIdx):
                         minCoordinatesClusterA = coordinatesClusterA
                     if showContours:
                         pygame.draw.circle(screen, RED, (int(round(coordinatesClusterA[0])), int(round(coordinatesClusterA[1]))), 1) # Render cluster A
-                    idx += 1
 
                 if multiTouch:
-                    idx = 0
                     for i in clusterB:
                         coordinatesClusterB = i
                         distanceListClusterB.append(math.sqrt((ptcCoordinates[1+sIdx][0] - coordinatesClusterB[0]) ** 2 + (ptcCoordinates[1+sIdx][0] - coordinatesClusterB[1]) ** 2))
@@ -112,7 +109,6 @@ def motionTrackingProcess(in_queue, out_queue, sIdx):
                             minCoordinatesClusterB = coordinatesClusterB
                         if showContours:
                             pygame.draw.circle(screen, BLUE, (int(round(coordinatesClusterB[0])), int(round(coordinatesClusterB[1]))), 1) # Render cluster B
-                        idx += 1
 
                 if showContours:
                     if showCentroid:
