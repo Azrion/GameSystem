@@ -15,15 +15,22 @@ def motionTrackingProcess(in_queue, out_queue, sIdx):
 
     screen = None
     clock = None
+
     if showContours:
-        screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.FULLSCREEN)
+        screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.HWSURFACE)
         pygame.init()
         clock = pygame.time.Clock()
         screen.blit(pygame.transform.scale(screen, (width, height)), (0, 0))
+
     master = None
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, clusteringIter, clusteringEpsilon) # Define criteria for kmeans
+    clusterNumber = 1
+    if multiTouch:
+        clusterNumber = 2
     minCoordinatesClusterA = [0, 0]
     minCoordinatesClusterB = [0, 0]
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, clusteringIter, clusteringEpsilon) # Define criteria for kmeans
+    minDistanceA = float('inf')
+    minDistanceB = float('inf')
 
     try:
         while True:
@@ -79,29 +86,33 @@ def motionTrackingProcess(in_queue, out_queue, sIdx):
                         groupedListXY.append(coordinates)
 
                 groupedListXY = np.float32(groupedListXY)
-                ret, label, center = cv2.kmeans(groupedListXY, 2, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS) # Apply kmeans
-                clusterA = groupedListXY[label.ravel() == 0]
-                clusterB = groupedListXY[label.ravel() == 1]
+                ret, label, center = cv2.kmeans(groupedListXY, clusterNumber, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS) # Apply kmeans
+                clusterA = groupedListXY[label.ravel() == 0] # Cluster Input A
+                if multiTouch:
+                    clusterB = groupedListXY[label.ravel() == 1] # Cluster Input B
 
                 idx = 0
                 for i in clusterA:
                     coordinatesClusterA = i
                     distanceListClusterA.append(math.sqrt((ptcCoordinates[1+sIdx][0] - coordinatesClusterA[0]) ** 2 + (ptcCoordinates[1+sIdx][0] - coordinatesClusterA[1]) ** 2))
-                    if distanceListClusterA[idx] < distanceListClusterA[idx - 1]:
+                    if distanceListClusterA[-1] < minDistanceA:
+                        minDistanceA = distanceListClusterA[-1]
                         minCoordinatesClusterA = coordinatesClusterA
                     if showContours:
                         pygame.draw.circle(screen, RED, (int(round(coordinatesClusterA[0])), int(round(coordinatesClusterA[1]))), 1) # Render cluster A
                     idx += 1
 
-                idx = 0
-                for i in clusterB:
-                    coordinatesClusterB = i
-                    distanceListClusterB.append(math.sqrt((ptcCoordinates[1+sIdx][0] - coordinatesClusterB[0]) ** 2 + (ptcCoordinates[1+sIdx][0] - coordinatesClusterB[1]) ** 2))
-                    if distanceListClusterB[idx] < distanceListClusterB[idx - 1]:
-                        minCoordinatesClusterB = coordinatesClusterB
-                    if showContours:
-                        pygame.draw.circle(screen, BLUE, (int(round(coordinatesClusterB[0])), int(round(coordinatesClusterB[1]))), 1) # Render cluster B
-                    idx += 1
+                if multiTouch:
+                    idx = 0
+                    for i in clusterB:
+                        coordinatesClusterB = i
+                        distanceListClusterB.append(math.sqrt((ptcCoordinates[1+sIdx][0] - coordinatesClusterB[0]) ** 2 + (ptcCoordinates[1+sIdx][0] - coordinatesClusterB[1]) ** 2))
+                        if distanceListClusterB[-1] < minDistanceB:
+                            minDistanceB = distanceListClusterB[-1]
+                            minCoordinatesClusterB = coordinatesClusterB
+                        if showContours:
+                            pygame.draw.circle(screen, BLUE, (int(round(coordinatesClusterB[0])), int(round(coordinatesClusterB[1]))), 1) # Render cluster B
+                        idx += 1
 
                 if showContours:
                     if showCentroid:
@@ -110,6 +121,10 @@ def motionTrackingProcess(in_queue, out_queue, sIdx):
                             pygame.draw.circle(screen, GOLD, (int(round(center[1][0])), int(round(center[1][1]))), centroidSize) # Render centroid cluster B
 
             out_queue.put([minCoordinatesClusterA, minCoordinatesClusterB])  # Send data
+
+            # Reset minimum distances
+            minDistanceA = float('inf')
+            minDistanceB = float('inf')
 
             master = frame2 # Update master
 
@@ -146,12 +161,16 @@ def gameEngineProcess(in_queue, out_queue, particles):
             # Update position for input 1 and input 2
             dx1 = minCoordinatesClusterA[0] - particles[0].x
             dy1 = minCoordinatesClusterA[1] - particles[0].y
+            particles[0].x = minCoordinatesClusterA[0]
+            particles[0].y = minCoordinatesClusterA[1]
             particles[0].angle = inputDrag * math.pi + math.atan2(dy1, dx1)
             particles[0].velocity = math.hypot(dx1, dy1) * inputSpeed
 
             if multiTouch:
                 dx2 = minCoordinatesClusterB[0] - particles[1].x
                 dy2 = minCoordinatesClusterB[1] - particles[1].y
+                particles[1].x = minCoordinatesClusterB[0]
+                particles[1].y = minCoordinatesClusterB[1]
                 particles[1].angle = inputDrag * math.pi + math.atan2(dy2, dx2)
                 particles[1].velocity = math.hypot(dx2, dy2) * inputSpeed
 

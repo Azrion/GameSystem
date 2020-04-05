@@ -20,8 +20,8 @@ GOLD = (255, 215, 0)
 SILVER = (192, 192, 192)
 
 # Camera Settings
-resolutionAdjuster = True
-resolution = "HD"
+resolutionAdjuster = False
+resolution = "FullHD"
 gaussianBlurKSize = (21, 21) # Odd number required
 thresholdValue = 10
 thresholdMaxValue = 255
