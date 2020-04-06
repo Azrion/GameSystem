@@ -3,21 +3,52 @@ from motionTracking import *
 
 # Game settings
 backgroundColor = BLACK
-inputSize = 50 # Even number required
+inputSize = 50 # Integer required
 n_particles = 1
-particleSize = 25 # Even number required
+particleSize = 25 # Integer required
 particleSpawnRandom = False
 particleSpawnPos = [width/2, height/2]
 particleSpawnVel = 0 # Between 0 and 1
 particleSpawnAngle = 0 # Between 0 and PI*2
 particleColor = GREEN
-multiTouch = False
-inputDrag = 0.5 # Between 0 and 1
+multiTouch = True
+inputAngle = 0.5 # Between 0 and 1
 inputSpeed = 0.1 # Between 0 and 1
 drag = 0.999 # Between 0 and 1
 elasticity = 0.75 # Between 0 and 1
 gravity = (math.pi, 0.000)
-fps = 144
+fps = 30
+
+
+# Spawn game object particles
+def spawn(pSpawnPos, pSpawnVel, pSpawnAngle):
+    particlesList = []
+    inputA = Gameobject([0, 0], 0, 0, inputSize, RED) # Init player input A
+    particlesList.append(inputA)
+    skipIdx = 0
+    if multiTouch:
+        inputB = Gameobject([0, 0], 0, 0, inputSize, BLUE) # Init player input B
+        particlesList.append(inputB)
+        skipIdx = 1
+    for n in range(n_particles):
+        if particleSpawnRandom:
+            pSpawnPos = [random.randint(particleSize, width - particleSize),
+                         random.randint(particleSize, height - particleSize)]
+            pSpawnVel = random.random()
+            pSpawnAngle = random.uniform(0, math.pi * 2)
+        particle = Gameobject(pSpawnPos, pSpawnVel, pSpawnAngle,
+                              particleSize, particleColor) # Init game object particles
+        particlesList.append(particle)
+    return particlesList, skipIdx
+
+
+# Init pygame
+def pyStart():
+    screen = pygame.display.set_mode((width, height), pygame.DOUBLEBUF | pygame.HWSURFACE | pygame.FULLSCREEN)
+    pygame.init()
+    clock = pygame.time.Clock()
+    screen.blit(pygame.transform.scale(screen, (width, height)), (0, 0))
+    return screen, clock
 
 
 # Pygame Events
@@ -29,6 +60,43 @@ def pyEvents(event):
             return sys.exit(0)
     else:
         return None
+
+
+# Render and animate game object particles
+def render(screen, particles):
+    screen.fill(backgroundColor)
+    particleCoordinates = []
+
+    for i, ptc in enumerate(particles):
+        ptc.move()
+        ptc.bounce()
+        for ptc2 in particles[i + 1:]:
+            collide(ptc, ptc2)
+        ptc.draw(screen)
+        particleCoordinates.append([ptc.x, ptc.y])
+    return particleCoordinates
+
+
+# Calculate closest contour point to closest game object particle
+def closestContour(cluster, minCoordinatesCluster, ptcCoordinates, sIdx, minDistance):
+    distanceListCluster = []
+    for i in cluster:
+        distanceListCluster.append(math.sqrt((ptcCoordinates[1 + sIdx][0] - i[0]) ** 2 +
+                                             (ptcCoordinates[1 + sIdx][1] - i[1]) ** 2))
+        if distanceListCluster[-1] < minDistance:
+            minDistance = distanceListCluster[-1]
+            minCoordinatesCluster = i
+    return minCoordinatesCluster
+
+
+# Update attributes for input
+def moveInput(minCoordinatesCluster, particles):
+    dx1 = minCoordinatesCluster[0] - particles.x
+    dy1 = minCoordinatesCluster[1] - particles.y
+    particles.angle = inputAngle * math.pi + math.atan2(dy1, dx1)
+    particles.velocity = math.hypot(dx1, dy1) * inputSpeed
+    particles.x = minCoordinatesCluster[0]
+    particles.y = minCoordinatesCluster[1]
 
 
 # Combine vectors for movement calculation
@@ -103,20 +171,3 @@ class Gameobject:
             self.y = 2 * self.radius - self.y
             self.angle = math.pi - self.angle
             self.velocity *= elasticity
-
-
-particlesList = []
-input1 = Gameobject([0, 0], 0, 0, inputSize, RED) # Init player input 1
-particlesList.append(input1)
-skipIdx = 0
-if multiTouch:
-    input2 = Gameobject([0, 0], 0, 0, inputSize, BLUE) # Init player input 2
-    particlesList.append(input2)
-    skipIdx = 1
-for n in range(n_particles):
-    if particleSpawnRandom:
-        particleSpawnPos = [random.randint(particleSize, width - particleSize), random.randint(particleSize, height - particleSize)]
-        particleSpawnVel = random.random()
-        particleSpawnAngle = random.uniform(0, math.pi * 2)
-    particle = Gameobject(particleSpawnPos, particleSpawnVel, particleSpawnAngle, particleSize, particleColor) # Init game object particle
-    particlesList.append(particle)
