@@ -59,7 +59,7 @@ def cameraStart():
 def imageProcessing(camera, master):
     (grabbed, frame0) = camera.read() # Grab a frame
     if not grabbed: # End of feed
-        return None, None, None, None, None, 'break'
+        return None, None, None, None, 'break'
 
     frame1 = cv2.cvtColor(frame0, cv2.COLOR_BGR2GRAY) # Gray frame
     frame2 = cv2.GaussianBlur(frame1, gaussianBlurKSize, 0) # Blur frame
@@ -67,7 +67,7 @@ def imageProcessing(camera, master):
     # Initialize master
     if master is None:
         master = frame2
-        return master, None, None, None, None, 'continue'
+        return master, None, None, None, 'continue'
 
     frame3 = cv2.absdiff(master, frame2) # Delta frame
     frame4 = cv2.threshold(frame3, thresholdValue, thresholdMaxValue, cv2.THRESH_BINARY)[1] # Threshold frame
@@ -78,10 +78,10 @@ def imageProcessing(camera, master):
     frame5 = cv2.dilate(frame5, kernel, iterations=dilatingIter)
 
     # Find contours on thresholded image
-    image, contours, hierarchy = cv2.findContours(frame5.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(frame5.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     master = frame2  # Update master
     frames = [frame0, frame1, frame2, frame3, frame4, frame5] # Collect frames
-    return master, image, contours, hierarchy, frames, 'None'
+    return master, contours, hierarchy, frames, 'None'
 
 
 # Init cluster parameters

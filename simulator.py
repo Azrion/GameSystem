@@ -12,7 +12,7 @@ def motionTrackingProcess(in_queue, out_queue, sIdx):
 
     while True:
         # Manipulate images
-        master, image, contours, hierarchy, frames, result = imageProcessing(camera, master)
+        master, contours, hierarchy, frames, result = imageProcessing(camera, master)
         if result == 'break':
             break
         elif result == 'continue':
