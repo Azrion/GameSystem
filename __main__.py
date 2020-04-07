@@ -1,5 +1,5 @@
 # Imports
-from gameEngine import *
+from src.GameSystem.gameEngine import *
 from multiprocessing import Process, Queue, Array
 
 

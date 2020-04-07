@@ -1,5 +1,5 @@
 # Imports
-from motionTracking import *
+from src.GameSystem.motionTracking import *
 
 # Game settings
 backgroundColor = BLACK
