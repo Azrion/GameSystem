@@ -4,7 +4,6 @@ Physics game engine
 
 # Imports
 import sys
-import math
 import random
 from pygame.locals import *
 from src.motionTracking import *
@@ -88,31 +87,25 @@ def render(screen, particles):
     """
     :param screen: pygame screen
     :param particles: array of game object particles
-    :return: game object particles coordinates
     """
-    screen.fill(backgroundColor)
-    particleCoordinates = []
-
     for i, ptc in enumerate(particles):
         ptc.move()
         ptc.bounce()
         for ptc2 in particles[i + 1:]:
             collide(ptc, ptc2)
         ptc.draw(screen)
-        particleCoordinates.append([ptc.x, ptc.y])
-    return particleCoordinates
 
 
 # Calculate closest contour point to closest game object particle
-def closestContour(cluster, minCoordinatesCluster, ptcCoordinates, sIdx, minDistance):
+def closestContour(cluster, ptcCoordinates, sIdx):
     """
     :param cluster: array of clusters' contour coordinates
-    :param minCoordinatesCluster: coordinates of the clusters' closest contour point to closest game object particle
     :param ptcCoordinates: coordinates of game object particle
     :param sIdx: multi touch index
-    :param minDistance: smallest distance of the clusters' closest contour point to closest game object particle
     :return: coordinates of the clusters' closest contour point to closest game object particle
     """
+    minCoordinatesCluster = [0, 0]
+    minDistance = float('inf')  # Set initial minimum distance
     distanceListCluster = []
     for i in cluster:
         distanceListCluster.append(math.sqrt((ptcCoordinates[1 + sIdx][0] - i[0]) ** 2 +

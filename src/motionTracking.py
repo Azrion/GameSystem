@@ -4,6 +4,7 @@ Motion tracking of contours via camera
 
 # Imports
 import os
+import math
 import numpy as np
 import cv2
 import pygame
@@ -106,7 +107,7 @@ def clusterParams(multiTouch):
     clusterNumber = 1
     if multiTouch:
         clusterNumber = 2
-    return criteria, clusterNumber, clusterA, clusterB, center
+    return criteria, clusterNumber, clusterA, clusterB, center, []
 
 
 # Clustering contour points
@@ -118,19 +119,49 @@ def contourClustering(contours, criteria, clusterNumber, multiTouch):
     :param multiTouch: boolean about enabling multi touch
     :return: clustered contours and corresponding centroid
     """
-    groupedListXY = []
+    contourCoordinates = []
     for i in contours:
         for j in range(len(i)):
-            groupedListXY.append(i[j][0])  # Save contour point coordinates
+            contourCoordinates.append(i[j][0])  # Save contour point coordinates
 
-    groupedListXY = np.float32(groupedListXY)
-    ret, label, center = cv2.kmeans(groupedListXY, clusterNumber, None,
+    contourCoordinates = np.float32(contourCoordinates)
+    ret, label, center = cv2.kmeans(contourCoordinates, clusterNumber, None,
                                     criteria, 10, cv2.KMEANS_RANDOM_CENTERS)  # Apply kmeans clustering
-    clusterA = groupedListXY[label.ravel() == 0]  # Cluster input A
+    clusterA = contourCoordinates[label.ravel() == 0]  # Cluster input A
     clusterB = []
     if multiTouch:
-        clusterB = groupedListXY[label.ravel() == 1]  # Cluster input B
+        clusterB = contourCoordinates[label.ravel() == 1]  # Cluster input B
     return clusterA, clusterB, center, ret
+
+
+# Tracking centroid
+def centroidTracking(clusterA, clusterB, center, previousCenter):
+    """
+    :param clusterA: array of clustered contour coordinates
+    :param clusterB: array of clustered contour coordinates
+    :param center: array of center coordinates
+    :param previousCenter: array of previous center coordinates
+    :return: relabeled cluster and center
+    """
+    comparisonCenterCoordinates = []
+    comparisonCenterCoordinates.extend([center[0], center[1], previousCenter[1]])
+
+    # Find smallest distance between previous center A and previous/current centers' coordinates
+    minDistance = float('inf')  # Set initial minimum distance
+    distanceListCenter, minCoordinatesCenter = [], [0, 0]
+    for i in comparisonCenterCoordinates:
+        distanceListCenter.append(math.sqrt((previousCenter[0][0] - i[0]) ** 2 +
+                                            (previousCenter[0][1] - i[1]) ** 2))
+        if distanceListCenter[-1] < minDistance:
+            minDistance = distanceListCenter[-1]
+            minCoordinatesCenter = i
+    # If smallest distance is center B: swap both cluster and center
+    if (minCoordinatesCenter == comparisonCenterCoordinates[1]).all():
+        tmpClusterA = clusterA
+        clusterA = clusterB
+        clusterB = tmpClusterA
+        center = [center[1], center[0]]
+    return clusterA, clusterB, center
 
 
 # Display contours
