@@ -2,7 +2,7 @@
 **<a href="https://www.python.org/downloads/release/python-377/">Python 3.7.7 (64-bit)</a>**<br>
 <br>
 # **Setup (Windows):**<br>
-1. Run _PyCharm 2019.3.4 (64-bit)_ as Administrator<br>
+1. Run _<a href="https://www.jetbrains.com/pycharm/download/other.html">PyCharm 2019.3.4 (64-bit)</a>_ as Administrator<br>
 2. Open _GameSystem_ folder<br>
 3. Go to _File_ → _Settings_ → _Project: GameSystem_ → _Project Interpreter_<br>
 4. Select the _Gearwheel_ [⚙] → _Add_<br>
