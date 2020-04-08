@@ -2,7 +2,6 @@
 Physics game engine
 """
 
-
 # Imports
 import sys
 import math

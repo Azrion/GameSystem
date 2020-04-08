@@ -2,7 +2,6 @@
 Motion tracking of contours via camera
 """
 
-
 # Imports
 import os
 import numpy as np

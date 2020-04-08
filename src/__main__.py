@@ -2,7 +2,6 @@
 Game system running both processes motion tracking and game engine
 """
 
-
 # Imports
 from src.gameEngine import *
 from multiprocessing import Process, Queue
