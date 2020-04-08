@@ -1,5 +1,5 @@
 # **Requirements:**<br>
-**Python 3.7.7 (64-bit)**<br>
+**<a href="https://www.python.org/downloads/release/python-377/">Python 3.7.7 (64-bit)</a>**<br>
 <br>
 # **Setup (Windows):**<br>
 1. Run _PyCharm 2019.3.4 (64-bit)_ as Administrator<br>
@@ -15,6 +15,3 @@ _-- numpy: 1.18.2<br>
 -- pygame: 1.9.6<br>
 -- setuptools: 46.1.3<br>_
 7. Run **_\_\_main\_\_.py_** to start the program<br>
-
-
-
