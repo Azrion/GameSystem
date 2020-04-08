@@ -41,7 +41,6 @@
     <li>Go to <i>File</i> → <i>Settings</i> → <i>Project: GameSystem</i> → 
     <i>Project Interpreter</i></li>
     <li>Select the initially created <i>Project Interpreter</i> "<i>Python 3.7 GameSystem</i>" from the list</li>
-    <li>A duplicate of <i>Project Interpreter</i> has been created, e.g. "<i>Python 3.7 GameSystem (2)</i>"</li>
     <li>Select <i>Apply</i> and click on <i>OK</i></li>
     <li>Rerun <b><i>__main__.py</i></b> to start the program</li>
 </ul>
