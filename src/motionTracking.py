@@ -22,10 +22,14 @@ GOLD = (255, 215, 0)
 SILVER = (192, 192, 192)
 
 # Camera Settings
-resolutionAutodetect = True
-resolution = "FullHD"
+cameraAutodetect = False
+resolution = "FullHD"  # 'FullHD', 'HD', 'SD'
+cameraID = 0  # Camera device index (only when camera autodetect is off)
+cameraFps = 30
+contourDetectionPoints = 650  # Indicates how many contour points needed to detect motion
+numRandomContours = 500  # 0 = Original contour points; needs to be smaller/equal than contour detection points
 gaussianBlurKSize = (31, 31)  # Odd number required
-thresholdValue = 20
+thresholdValue = 5
 thresholdMaxValue = 255
 erodingIter = 4
 dilatingIter = 8
@@ -45,17 +49,30 @@ elif resolution == "SD":
     width, height = 1024, 576
 
 
+# Convert from fourcc numerical code to fourcc string character code
+def decode_fourcc(cc):
+    """
+    :param cc: fourcc numerical code
+    :return: fourcc string character code
+    """
+    return "".join([chr((int(cc) >> 8 * i) & 0xFF) for i in range(4)])
+
+
 # Init camera
 def cameraStart():
     """
     :return: video input
     """
-    if resolutionAutodetect:
-        camera = cv2.VideoCapture(0)
+    if cameraAutodetect:
+        camera = cv2.VideoCapture(0, cv2.CAP_ANY)
     else:
-        camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        camera = cv2.VideoCapture(cameraID, cv2.CAP_DSHOW)
+    camera.set(3, width)
+    camera.set(4, height)
+    camera.set(5, cameraFps)
+    camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    print("Camera backend:", camera.getBackendName())
+    print("Codec:", decode_fourcc(camera.get(6)))
     return camera
 
 
@@ -101,9 +118,7 @@ def clusterParams(multiTouch):
     """
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
                 clusteringIter, clusteringEpsilon)  # Define criteria for kmeans
-    clusterA = []
-    clusterB = []
-    center = []
+    clusterA, clusterB, center = [[0, 0]], [[0, 0]], [[0, 0], [0, 0]]
     clusterNumber = 1
     if multiTouch:
         clusterNumber = 2
@@ -180,6 +195,22 @@ def displayContours(data, screen, sContours, multiTouch):
             for i in range(len(data[3])):
                 pygame.draw.circle(screen, BLUE, (int(round(data[3][i][0])),
                                                   int(round(data[3][i][1]))), 1)  # Render cluster B
+
+
+# Display input
+def displayInput(minCoordinatesClusterA, minCoordinatesClusterB, inputSize, screen, multiTouch):
+    """
+    :param minCoordinatesClusterA:
+    :param minCoordinatesClusterB:
+    :param inputSize:
+    :param screen:
+    :param multiTouch:
+    """
+    pygame.draw.circle(screen, RED, (int(round(minCoordinatesClusterA[0])),
+                                     int(round(minCoordinatesClusterA[1]))), inputSize)  # Render centroid A
+    if multiTouch:
+        pygame.draw.circle(screen, BLUE, (int(round(minCoordinatesClusterB[0])),
+                                          int(round(minCoordinatesClusterB[1]))), inputSize)  # Render centroid B
 
 
 # Display centroid

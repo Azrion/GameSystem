@@ -1,7 +1,7 @@
 <h1><b>Requirements:</b></h1><br>
 <b><a href="https://www.python.org/downloads/release/python-377/">Python 3.7.7 (64-bit)</a></b><br>
 <br>
-<h1><b>Setup (Windows):</b></h1><br>
+<h1><b>Setup (Windows/Linux):</b></h1><br>
 <ol>
     <li>Run <i><a href="https://www.jetbrains.com/pycharm/download/other.html">
     PyCharm 2019.3.4 (64-bit)</a></i> as Administrator</li>
@@ -13,7 +13,7 @@
     <li>Set <i>Interpreter</i>: 
     "<i>PATH_TO_PYTHON\Python\Python37\python.exe</i>" then click on <i>OK</i></li>
     <li>
-    You should be able to see a list of the following packages:
+    You should be able to see a list of the following packages (if not install them manually):
         <i>
             <ul>
                 <li>numpy: 1.18.2</li>

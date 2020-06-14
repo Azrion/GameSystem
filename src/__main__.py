@@ -3,16 +3,15 @@ Game system running both processes motion tracking and game engine
 """
 
 # Imports
-from src.gameEngine import *
+from src.pingPong import *
 from multiprocessing import Process, Queue
 
 
 # Motion Tracking Process
-def motionTrackingProcess(in_queue, out_queue, skipIdx):
+def motionTrackingProcess(in_queue, out_queue):
     """
     :param in_queue: array of received data
     :param out_queue: array of sent data
-    :param skipIdx: multi touch index
     """
     camera, master = cameraStart(), None  # Init camera
 
@@ -30,7 +29,8 @@ def motionTrackingProcess(in_queue, out_queue, skipIdx):
         # RECEIVE: Data package received
         data = in_queue.get()  # Receive data
         if data:
-            ptcCoordinates = data[0]
+            ptcCoordinates = [[p.x, p.y] for p in data[0]]
+            ptcSizes = [p.radius for p in data[0]]
         else:
             endMessage(out_queue)  # Send END message
             break
@@ -38,21 +38,29 @@ def motionTrackingProcess(in_queue, out_queue, skipIdx):
 
         # Clustering contour points
         if len(contours) != 0:
-            clusterA, clusterB, center, ret = contourClustering(contours, criteria, clusterNumber, multiTouch)
-            if multiTouch:
-                if len(previousCenter) != 0:
-                    clusterA, clusterB, center = centroidTracking(clusterA, clusterB, center, previousCenter)
-                previousCenter = center
+            numContours = 0
+            for i in contours:
+                numContours += len(i)
+            # Contour points needed to detect motion
+            if numContours >= contourDetectionPoints:
+                # Take random number of contour points
+                if numRandomContours > 0:
+                    contours = [random.sample(listDimensionRemover(contours, 1), numRandomContours)]
+                clusterA, clusterB, center, ret = contourClustering(contours, criteria, clusterNumber, multiTouch)
+                # Centroid tracking
+                if multiTouch:
+                    if len(previousCenter) != 0:
+                        clusterA, clusterB, center = centroidTracking(clusterA, clusterB, center, previousCenter)
+                    previousCenter = center
 
         # Input A: Calculate closest contour point to closest game object particle
         if len(clusterA) != 0 or len(clusterB) != 0:
-            minCoordinatesClusterA = closestContour(clusterA, ptcCoordinates, skipIdx)
+            minCoordinatesClusterA = closestContour(clusterA, ptcCoordinates, (ptcSizes[0] + inputSize), multiTouch)
             dataPackage = [minCoordinatesClusterA, [0, 0]]
-
             # Input B: Calculate closest contour point to closest game object particle
             if multiTouch:
-                    minCoordinatesClusterB = closestContour(clusterB, ptcCoordinates, skipIdx)
-                    dataPackage = [minCoordinatesClusterA, minCoordinatesClusterB]
+                minCoordinatesClusterB = closestContour(clusterB, ptcCoordinates, (ptcSizes[0] + inputSize), multiTouch)
+                dataPackage = [minCoordinatesClusterA, minCoordinatesClusterB]
 
         # SEND: Data package preparation
         if len(clusterA) != 0 or len(clusterB) != 0:
@@ -78,6 +86,9 @@ def gameEngineProcess(in_queue, out_queue, particles):
     """
     screen, clock = pyStart()  # Init pygame
 
+    # Custom game init
+    textSurfaces, textPositions = initializeGame()
+
     try:
         while True:
             for event in pygame.event.get():
@@ -87,7 +98,7 @@ def gameEngineProcess(in_queue, out_queue, particles):
             screen.fill(backgroundColor)
 
             # SEND: Data package preparation
-            dataPackage = [[[p.x, p.y] for p in particles]]
+            dataPackage = [particles]
             out_queue.put(dataPackage)  # Send data
 
             # RECEIVE: Data package received
@@ -106,6 +117,8 @@ def gameEngineProcess(in_queue, out_queue, particles):
                 moveInput(minCoordinatesClusterB, particles[1])  # Update attributes for input B
 
             render(screen, particles)  # Render and animate game object particles
+            renderGame(screen, textSurfaces, textPositions)  # Custom game rendering
+            textSurfaces = checkGoal(particles, textSurfaces)
 
             clock.tick(fps)
             pygame.display.flip()
@@ -128,15 +141,14 @@ def endMessage(out_queue):
 
 
 # Init multiprocessing
-def multiprocess(pList, skipIdx):
+def multiprocess(pList):
     """
     :param pList: array of game object particles
-    :param skipIdx: multi touch index
     """
     q1 = Queue()
     q2 = Queue()
 
-    process_1 = Process(target=motionTrackingProcess, args=(q1, q2, skipIdx))  # Init Motion Tracking Process
+    process_1 = Process(target=motionTrackingProcess, args=(q1, q2))  # Init Motion Tracking Process
     process_2 = Process(target=gameEngineProcess, args=(q2, q1, pList))  # Init Game Engine Process
 
     process_1.start()
@@ -155,5 +167,5 @@ def multiprocess(pList, skipIdx):
 # Main function
 if __name__ == "__main__":
     # Spawn game object particles
-    particlesList, sIdx = spawn(particleSpawnPos, particleSpawnVel, particleSpawnAngle)
-    multiprocess(particlesList, sIdx)  # Init multiprocessing
+    particlesList = spawn(particleSpawnPos, particleSpawnVel, particleSpawnAngle)
+    multiprocess(particlesList)  # Init multiprocessing
