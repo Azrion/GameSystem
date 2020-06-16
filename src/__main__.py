@@ -4,6 +4,7 @@ Game system running both processes motion tracking and game engine
 
 # Imports
 from src.pingPong import *
+from src.mqttService import *
 from multiprocessing import Process, Queue
 
 
@@ -85,6 +86,7 @@ def gameEngineProcess(in_queue, out_queue, particles):
     :param particles: array of game object particles
     """
     screen, clock = pyStart()  # Init pygame
+    timeElapsed = 0  # Timer
 
     # Custom game init
     textSurfaces, textPositions = initializeGame()
@@ -94,6 +96,16 @@ def gameEngineProcess(in_queue, out_queue, particles):
             for event in pygame.event.get():
                 if event.type == KEYDOWN:
                     pyEvents(event)
+
+            # Measure time
+            dt = clock.tick()
+            timeElapsed += dt
+
+            # Run mqtt service
+            if timeElapsed > updateService:
+                mqttServ.update()
+                print("PSE output:", mqttServ.mood, ",", mqttServ.engagement)
+                timeElapsed = 0
 
             screen.fill(backgroundColor)
 

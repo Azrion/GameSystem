@@ -37,6 +37,7 @@
       <w>lowercasing</w>
       <w>mins</w>
       <w>mjpg</w>
+      <w>mqtt</w>
       <w>msmf</w>
       <w>ncov</w>
       <w>nltk</w>
@@ -52,6 +53,7 @@
       <w>pygame</w>
       <w>quantiles</w>
       <w>sars</w>
+      <w>serv</w>
       <w>sidx</w>
       <w>spacy</w>
       <w>sqrt</w>
