@@ -22,7 +22,7 @@ multiTouch = True
 # Custom game settings
 pygame.font.init()
 font = pygame.font.SysFont('Helvetica', 30)  # Font name and font size
-textBuffer = 200  # Distance of player name from the center of the board (used diagonally)
+textBuffer = 500  # Distance of player name from the center of the board (used diagonally)
 scoreBuffer = 50  # Distance of the score from the player name (used vertically)
 textDirections = [[-1, -1], [1, -1]]
 areaBorderWidth = 3  # Thickness of the drawn borders
@@ -138,8 +138,14 @@ def pingPongEvents(particles, mqttServ, textSurface, speedInd):
     return textSurface, speedInd
 
 
-# START
+# Render game results
 def renderGame(screen, textSurface, textPosition, mqttServ):
+    """
+    :param screen: pygame screen
+    :param textSurface: text surface
+    :param textPosition: text position
+    :param mqttServ: MQTT Service
+    """
     for i in range(n_players):
         # Draw play areas
         pygame.draw.rect(screen, WHITE, playArea[i], areaBorderWidth)
@@ -158,6 +164,9 @@ def renderGame(screen, textSurface, textPosition, mqttServ):
 
 # Reset puck to initial position
 def reset(particles):
+    """
+    :param particles: array of game object particles
+    """
     sIdx = 1
     if multiTouch:
         sIdx = 2
@@ -168,7 +177,14 @@ def reset(particles):
         particles[p + sIdx].angle = 0
 
 
+# Check if a player scored
 def checkGoal(screen, particles, textSurface):
+    """
+    :param screen: pygame screen
+    :param particles: array of game object particles
+    :param textSurface: text surface
+    :return: updated text surface
+    """
     # Define goal sizes
     sGSList = []
     for i in range(n_players):
@@ -212,7 +228,15 @@ def checkGoal(screen, particles, textSurface):
         return textSurface
 
 
+# Ping Pong game function
 def pingPongGame(screen, particles, mqttServ, textSurfaces, textPositions):
+    """
+    :param screen: pygame screen
+    :param particles: array of game object particles
+    :param mqttServ: MQTT Service
+    :param textSurfaces: text surface
+    :param textPositions: text position
+    """
     textSurfaces, speedInd = pingPongEvents(particles, mqttServ, textSurfaces, speedIndices)  # Change difficulty
     # Adjust puck speed
     sIdx = 1

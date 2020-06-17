@@ -41,6 +41,9 @@ class MQTTService:
         self.engagement = None
 
     def update(self):
+        """
+        Update service
+        """
         self.state += 1
 
 
