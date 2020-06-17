@@ -101,8 +101,8 @@ def gameEngineProcess(in_queue, out_queue, particles):
             dt = clock.tick()
             timeElapsed += dt
 
-            # Run mqtt service
-            if timeElapsed > updateService:
+            # Run MQTT service
+            if timeElapsed > updateService * 1000:
                 mqttServ.update()
                 timeElapsed = 0
 
@@ -129,7 +129,7 @@ def gameEngineProcess(in_queue, out_queue, particles):
 
             render(screen, particles)  # Render and animate game object particles
 
-            # Run custom game
+            # Load custom game
             pingPongGame(pygame.event.get(), particles, mqttServ, textSurfaces, textPositions, speedInd, screen)
 
             clock.tick(fps)

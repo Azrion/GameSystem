@@ -3,12 +3,13 @@ Game system's subscription: receives the PSE output
 """
 
 # Imports
+import time
 import paho.mqtt.client as mqtt
 
 # IP address and port
 mqttIP = "localhost"
 mqttPort = 1883
-updateService = 10000  # Receive updates every x ms
+updateService = 10  # Receive updates every x seconds
 
 
 # Establish connection
@@ -26,10 +27,14 @@ def on_message(gameClient, _, msg):
     pse_output_msg = msg.payload.decode()
     mood, engagement = pse_output_msg.split(',')
     mqttServ.mood, mqttServ.engagement = mood, engagement
+    time.sleep(updateService)
 
 
 # Define MQTT Service
 class MQTTService:
+    """
+    MQTT Service
+    """
     def __init__(self):
         self.state = 1
         self.mood = None
