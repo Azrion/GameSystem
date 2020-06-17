@@ -28,7 +28,7 @@ textDirections = [[-1, -1], [1, -1]]
 areaBorderWidth = 3  # Thickness of the drawn borders
 goalBorderWidth = 25  # Thickness of the goal
 goalBorderColor = GREEN  # Color of the goal
-boundaries = [False, False, True, True]  # Boundaries top, bottom, left, right
+boundaries = [True, True, True, True]  # Boundaries top, bottom, left, right
 
 # Player settings
 n_players = 2  # Number of players
@@ -41,6 +41,7 @@ paddleSize = [40, 50]  # Paddle size increments
 puckSpeeds = [0.65, 1]  # Puck speed increments
 goalSize = [1, 0.9, 0.8, 0.7, 0.6, 0.5]  # Goal size increments
 speedIndices = [1 for n in range(n_players)]
+goalIndices = [0 for nG in range(n_players)]
 
 
 # Spawn game object particles
@@ -137,7 +138,7 @@ def pingPongEvents(particles, mqttServ, textSurface, speedInd):
     return textSurface, speedInd
 
 
-# Start
+# START
 def renderGame(screen, textSurface, textPosition, mqttServ):
     for i in range(n_players):
         # Draw play areas
@@ -168,18 +169,41 @@ def reset(particles):
 
 
 def checkGoal(screen, particles, textSurface):
-    pygame.draw.line(screen, goalBorderColor, (0, 0), (0, height), goalBorderWidth)
+    # Define goal sizes
+    sGSList = []
+    for i in range(n_players):
+        scaledGoalSize = height * goalSize[goalIndices[i]]
+        subtractedGoalSize = height - scaledGoalSize
+        sGSList.append(subtractedGoalSize)
+        if (i % 2) == 0:
+            pygame.draw.line(screen, goalBorderColor,
+                             (0, int(subtractedGoalSize/2)), (0, height - (subtractedGoalSize/2)), goalBorderWidth)
+        else:
+            pygame.draw.line(screen, goalBorderColor, (width, int(subtractedGoalSize/2)),
+                             (width, height - (subtractedGoalSize/2)), goalBorderWidth)
     sIdx = 1
     if multiTouch:
         sIdx = 2
     for p in range(len(particles) - sIdx):
         player = None
         # Puck hits left goal
-        if particles[p + sIdx].x <= particles[p + sIdx].radius:
+        if particles[p + sIdx].x <= particles[p + sIdx].radius + goalBorderWidth and \
+                int(sGSList[0] / 2) <= particles[p + sIdx].y <= height - (sGSList[0] / 2):
             player = 1
+            # Reduce right goal size
+            if goalIndices[0] < len(goalSize) - 1:
+                goalIndices[0] += 1
+                textSurface[player][4] = font.render('Goal size: ' + str(int(goalSize[goalIndices[0]] * 100)) + '%',
+                                                     False, WHITE)
         # Puck hits right goal
-        elif particles[p + sIdx].x >= width - particles[p + sIdx].radius:
+        elif particles[p + sIdx].x >= width - particles[p + sIdx].radius - goalBorderWidth and \
+                int(sGSList[1] / 2) <= particles[p + sIdx].y <= height - (sGSList[1] / 2):
             player = 0
+            # Reduce left goal size
+            if goalIndices[1] < len(goalSize) - 1:
+                goalIndices[1] += 1
+                textSurface[player][4] = font.render('Goal size: ' + str(int(goalSize[goalIndices[1]] * 100)) + '%',
+                                                     False, WHITE)
         # Update scores and reset puck
         if player is not None:
             playerScore[player] += 1
@@ -188,7 +212,7 @@ def checkGoal(screen, particles, textSurface):
         return textSurface
 
 
-def pingPongGame(screen, events, particles, mqttServ, textSurfaces, textPositions):
+def pingPongGame(screen, particles, mqttServ, textSurfaces, textPositions):
     textSurfaces, speedInd = pingPongEvents(particles, mqttServ, textSurfaces, speedIndices)  # Change difficulty
     # Adjust puck speed
     sIdx = 1

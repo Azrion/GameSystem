@@ -130,7 +130,7 @@ def gameEngineProcess(in_queue, out_queue, particles):
             render(screen, particles)  # Render and animate game object particles
 
             # Load custom game
-            pingPongGame(screen, pygame.event.get(), particles, mqttServ, textSurfaces, textPositions)
+            pingPongGame(screen, particles, mqttServ, textSurfaces, textPositions)
 
             clock.tick(fps)
             pygame.display.flip()
