@@ -1,5 +1,5 @@
 """
-Simulates a PSE systems
+Simulates a PSE system
 """
 
 # Imports
