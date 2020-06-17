@@ -89,7 +89,7 @@ def gameEngineProcess(in_queue, out_queue, particles):
     timeElapsed = 0  # Timer
 
     # Init custom game
-    textSurfaces, textPositions, speedInd = initializeGame()
+    textSurfaces, textPositions = initializeGame()
 
     try:
         while True:
@@ -130,7 +130,7 @@ def gameEngineProcess(in_queue, out_queue, particles):
             render(screen, particles)  # Render and animate game object particles
 
             # Load custom game
-            pingPongGame(pygame.event.get(), particles, mqttServ, textSurfaces, textPositions, speedInd, screen)
+            pingPongGame(screen, pygame.event.get(), particles, mqttServ, textSurfaces, textPositions)
 
             clock.tick(fps)
             pygame.display.flip()

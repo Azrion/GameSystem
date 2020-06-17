@@ -8,7 +8,7 @@ from src.gameEngine import *
 
 # General game settings
 backgroundColor = BLACK
-middlePoint = [width/2, height/2]
+middlePoint = [width / 2, height / 2]
 inputSize = 50  # Integer required
 n_particles = 1
 particleSize = 50  # Integer required
@@ -26,12 +26,15 @@ textBuffer = 200  # Distance of player name from the center of the board (used d
 scoreBuffer = 50  # Distance of the score from the player name (used vertically)
 textDirections = [[-1, -1], [1, -1]]
 areaBorderWidth = 3  # Thickness of the drawn borders
+goalBorderWidth = 25  # Thickness of the goal
+goalBorderColor = GREEN  # Color of the goal
 boundaries = [False, False, True, True]  # Boundaries top, bottom, left, right
 
 # Player settings
 n_players = 2  # Number of players
+sPlayer = 0  # Selected player in use (simulating PSE system)
 playerScore = [0 for ns in range(n_players)]  # Initial player score
-playArea = [Rect(0, 0, width//2, height), Rect(width//2, 0, width//2, height)]
+playArea = [Rect(0, 0, width // 2, height), Rect(width // 2, 0, width // 2, height)]
 
 # Difficulty settings
 paddleSize = [40, 50]  # Paddle size increments
@@ -66,22 +69,22 @@ def spawn(pSpawnPos, pSpawnVel, pSpawnAngle):
     return particlesList
 
 
-# Initialize Ping Pong game
+# Init Ping Pong game
 def initializeGame():
     """
-    :return: text surface, position and speed indices
+    :return: text surface and position
     """
     textSurface = []
     textPosition = []
     for n in range(n_players):
         # Initialize text boxes
-        playerSurface = font.render('Player: ' + str(n+1), False, WHITE)
+        playerSurface = font.render('Player: ' + str(n + 1), False, WHITE)
         moodSurface = font.render('Mood: None', False, WHITE)
         engagementSurface = font.render('Engagement: None', False, WHITE)
         scoreSurface = font.render('Score: ' + str(playerScore[n]), False, WHITE)
-        goalSurface = font.render('Goal size: ' + str(int(goalSize[0]*100)) + '%', False, WHITE)
+        goalSurface = font.render('Goal size: ' + str(int(goalSize[0] * 100)) + '%', False, WHITE)
         paddleSurface = font.render('Paddle size: ' + str(paddleSize[1]), False, WHITE)
-        speedSurface = font.render('Puck speed: ' + str(int(puckSpeeds[1]*100)) + '%', False, WHITE)
+        speedSurface = font.render('Puck speed: ' + str(int(puckSpeeds[1] * 100)) + '%', False, WHITE)
         textSurface.append([playerSurface, moodSurface, engagementSurface, scoreSurface,
                             goalSurface, paddleSurface, speedSurface])
 
@@ -89,58 +92,53 @@ def initializeGame():
         textPosition.append([a + (b * textBuffer) for (a, b) in zip(middlePoint, textDirections[n])])
         textPosition[n] = [a - b for (a, b) in zip(textPosition[n], [textSurface[n][0].get_width() // 2,
                                                                      textSurface[n][0].get_height() // 2])]
-    return textSurface, textPosition, speedIndices
+    return textSurface, textPosition
 
 
-# START
+# Find surface index of the area in use
 def findArea(particles):
+    """
+    :param particles: array of game object particles
+    :return: surface index of current player
+    """
     for n in range(n_players):
         isInside = playArea[n].collidepoint(particles[n_players].x, particles[n_players].y)
         if isInside:
             return n
 
 
-# Ping Pong Events (only considering player 1)
-def pingPongEvents(event, particles, mqttServ, textSurface, speedInd):
+# Ping Pong Events
+def pingPongEvents(particles, mqttServ, textSurface, speedInd):
     """
-    :param event: pygame event
-    :param particles:
-    :param mqttServ:
-    :param textSurface:
-    :param speedInd:
-    :return: resulting event effects or text surface
+    :param particles: array of game object particles
+    :param mqttServ: MQTT Service
+    :param textSurface: text surface
+    :param speedInd: speed index
+    :return: resulting difficulty event effects and updated text surface as well as speed index
     """
-    player = 0
-    if event.type == KEYDOWN:
-        if event.key == pygame.K_ESCAPE:
-            return sys.exit(0)
-        if event.type == pygame.QUIT:
-            return sys.exit(0)
-        # Increase paddle size
-        if event.key == pygame.K_q:
-            particles[player].radius = paddleSize[1]
-            textSurface[player][5] = font.render('Paddle size: ' + str(paddleSize[1]), False, WHITE)
-        # Decrease paddle size
-        if event.key == pygame.K_a:
-            particles[player].radius = paddleSize[0]
-            textSurface[player][5] = font.render('Paddle size: ' + str(paddleSize[0]), False, WHITE)
-        # Increase puck speed
-        if event.key == pygame.K_w:
-            speedInd[player] = 1
-            textSurface[player][6] = font.render('Puck speed: ' +
-                                                 str(int(puckSpeeds[speedInd[player]]*100)) + '%', False, WHITE)
-        # Decrease puck speed
-        if event.key == pygame.K_s:
-            speedInd[player] = 0
-            textSurface[player][6] = font.render('Puck speed: ' +
-                                                 str(int(puckSpeeds[speedInd[player]]*100)) + '%', False, WHITE)
-        return textSurface, speedInd
-    else:
-        return textSurface, speedInd
+    # Increase paddle size
+    if mqttServ.mood == "good":
+        particles[sPlayer].radius = paddleSize[1]
+        textSurface[sPlayer][5] = font.render('Paddle size: ' + str(paddleSize[1]), False, WHITE)
+    # Decrease paddle size
+    if mqttServ.mood == "bad":
+        particles[sPlayer].radius = paddleSize[0]
+        textSurface[sPlayer][5] = font.render('Paddle size: ' + str(paddleSize[0]), False, WHITE)
+    # Increase puck speed
+    if mqttServ.engagement == "high":
+        speedInd[sPlayer] = 1
+        textSurface[sPlayer][6] = font.render('Puck speed: ' +
+                                              str(int(puckSpeeds[speedInd[sPlayer]] * 100)) + '%', False, WHITE)
+    # Decrease puck speed
+    if mqttServ.engagement == "low":
+        speedInd[sPlayer] = 0
+        textSurface[sPlayer][6] = font.render('Puck speed: ' +
+                                              str(int(puckSpeeds[speedInd[sPlayer]] * 100)) + '%', False, WHITE)
+    return textSurface, speedInd
 
 
+# Start
 def renderGame(screen, textSurface, textPosition, mqttServ):
-    player = 0
     for i in range(n_players):
         # Draw play areas
         pygame.draw.rect(screen, WHITE, playArea[i], areaBorderWidth)
@@ -148,15 +146,16 @@ def renderGame(screen, textSurface, textPosition, mqttServ):
         # Display player names, scores and speeds
         screen.blit(textSurface[i][0], textPosition[i])
         if mqttServ.mood is not None:
-            textSurface[player][1] = font.render('Mood: ' + str(mqttServ.mood), False, WHITE)
+            textSurface[sPlayer][1] = font.render('Mood: ' + str(mqttServ.mood), False, WHITE)
         if mqttServ.engagement is not None:
-            textSurface[player][2] = font.render('Engagement: ' + str(mqttServ.engagement), False, WHITE)
+            textSurface[sPlayer][2] = font.render('Engagement: ' + str(mqttServ.engagement), False, WHITE)
         for tSi in range(len(textSurface[i]) - 1):
             screen.blit(textSurface[i][tSi + 1], [a + b for (a, b) in zip(textPosition[i],
                                                                           [textSurface[i][0].get_rect().x,
                                                                            (tSi + 1) * scoreBuffer])])
 
 
+# Reset puck to initial position
 def reset(particles):
     sIdx = 1
     if multiTouch:
@@ -168,16 +167,20 @@ def reset(particles):
         particles[p + sIdx].angle = 0
 
 
-def checkGoal(particles, textSurface):
+def checkGoal(screen, particles, textSurface):
+    pygame.draw.line(screen, goalBorderColor, (0, 0), (0, height), goalBorderWidth)
     sIdx = 1
     if multiTouch:
         sIdx = 2
     for p in range(len(particles) - sIdx):
         player = None
+        # Puck hits left goal
         if particles[p + sIdx].x <= particles[p + sIdx].radius:
             player = 1
+        # Puck hits right goal
         elif particles[p + sIdx].x >= width - particles[p + sIdx].radius:
             player = 0
+        # Update scores and reset puck
         if player is not None:
             playerScore[player] += 1
             textSurface[player][3] = font.render('Score: ' + str(playerScore[player]), False, WHITE)
@@ -185,10 +188,8 @@ def checkGoal(particles, textSurface):
         return textSurface
 
 
-def pingPongGame(events, particles, mqttServ, textSurfaces, textPositions, speedInd, screen):
-    for event in events:
-        if event.type == KEYDOWN:
-            textSurfaces, speedInd = pingPongEvents(event, particles, mqttServ, textSurfaces, speedIndices)
+def pingPongGame(screen, events, particles, mqttServ, textSurfaces, textPositions):
+    textSurfaces, speedInd = pingPongEvents(particles, mqttServ, textSurfaces, speedIndices)  # Change difficulty
     # Adjust puck speed
     sIdx = 1
     if multiTouch:
@@ -196,5 +197,5 @@ def pingPongGame(events, particles, mqttServ, textSurfaces, textPositions, speed
     for p in range(len(particles) - sIdx):
         if findArea(particles) is not None:
             particles[p + sIdx].speed = puckSpeeds[speedInd[findArea(particles)]]
-    textSurfaces = checkGoal(particles, textSurfaces)
-    renderGame(screen, textSurfaces, textPositions, mqttServ)
+    textSurfaces = checkGoal(screen, particles, textSurfaces)  # Check if a player scored
+    renderGame(screen, textSurfaces, textPositions, mqttServ)  # Render game results
