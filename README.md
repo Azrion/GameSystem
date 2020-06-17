@@ -3,8 +3,8 @@
 Dependencies:
 <i>
     <ul>
-        <li>numpy: 1.18.5</li>
-        <li>opencv-python: 4.2.0.34</li>
+        <li>numpy==1.18.5</li>
+        <li>opencv-python==4.2.0.34</li>
         <li>paho-mqtt==1.5.0</li>
         <li>pygame==1.9.6</li>
     </ul>
