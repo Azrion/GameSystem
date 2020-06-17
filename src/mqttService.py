@@ -8,7 +8,7 @@ import paho.mqtt.client as mqtt
 # IP address and port
 mqttIP = "localhost"
 mqttPort = 1883
-updateService = 1000  # Receive updates every x ms
+updateService = 10000  # Receive updates every x ms
 
 
 # Establish connection

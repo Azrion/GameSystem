@@ -88,8 +88,8 @@ def gameEngineProcess(in_queue, out_queue, particles):
     screen, clock = pyStart()  # Init pygame
     timeElapsed = 0  # Timer
 
-    # Custom game init
-    textSurfaces, textPositions = initializeGame()
+    # Init custom game
+    textSurfaces, textPositions, speedInd = initializeGame()
 
     try:
         while True:
@@ -104,7 +104,6 @@ def gameEngineProcess(in_queue, out_queue, particles):
             # Run mqtt service
             if timeElapsed > updateService:
                 mqttServ.update()
-                print("PSE output:", mqttServ.mood, ",", mqttServ.engagement)
                 timeElapsed = 0
 
             screen.fill(backgroundColor)
@@ -129,8 +128,9 @@ def gameEngineProcess(in_queue, out_queue, particles):
                 moveInput(minCoordinatesClusterB, particles[1])  # Update attributes for input B
 
             render(screen, particles)  # Render and animate game object particles
-            renderGame(screen, textSurfaces, textPositions)  # Custom game rendering
-            textSurfaces = checkGoal(particles, textSurfaces)
+
+            # Run custom game
+            pingPongGame(pygame.event.get(), particles, mqttServ, textSurfaces, textPositions, speedInd, screen)
 
             clock.tick(fps)
             pygame.display.flip()

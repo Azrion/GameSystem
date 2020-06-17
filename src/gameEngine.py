@@ -162,6 +162,7 @@ class Gameobject:
         self.radius = radius
         self.objectColor = objectColor
         self.boundaries = boundaries
+        self.speed = 1
 
     def draw(self, screen):
         """
@@ -175,8 +176,8 @@ class Gameobject:
         Calculating game objects' next coordinates to move in
         """
         self.angle, self.velocity = addVectors((self.angle, self.velocity), gravity)
-        self.x += math.sin(self.angle) * self.velocity
-        self.y -= math.cos(self.angle) * self.velocity
+        self.x += math.sin(self.angle) * self.velocity * self.speed
+        self.y -= math.cos(self.angle) * self.velocity * self.speed
         self.velocity *= drag
 
     def bounce(self):
