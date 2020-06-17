@@ -1,6 +1,6 @@
 <h1><b>Requirements:</b></h1><br>
 <b><a href="https://www.python.org/downloads/release/python-377/">Python 3.7.7 (64-bit)</a></b><br>
-Dependencies:
+Dependencies:s
 <i>
     <ul>
         <li>numpy: 1.18.5</li>
