@@ -4,7 +4,7 @@ The system is composed of two sub-systems. The first - Game System - is responsi
 processing of the game, this includes rendering its environment, processing the inputs of the players,
 making the game respond accordingly and adapting the environment of the game based on the
 information received from the second sub-system regarding the players' mood and engagement.
-The second sub-system - Player State Estimation system or P.S.E. (https://github.com/berat-cakir/Tovertafel_2.0_PlayerStateEstimationSystem) - assesses the players' state
+The second sub-system - Player State Estimation system or <a href="https://github.com/berat-cakir/Tovertafel_2.0_PlayerStateEstimationSystem">P.S.E.</a> - assesses the players' state
 of mind based on mood and engagement measurements obtained through the processing of live
 video stream of the players and their interactions.
 
