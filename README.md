@@ -1,12 +1,5 @@
 <h1><b>Requirements:</b></h1><br>
 <b><a href="https://www.python.org/downloads/release/python-377/">Python 3.7.7 (64-bit)</a></b><br>
-Dependencies:
-    <ul>
-        <li><i>numpy==1.18.5</i></li>
-        <li><i>opencv-python==4.2.0.34</i></li>
-        <li><i>paho-mqtt==1.5.0</i></li>
-        <li><i>pygame==1.9.6</i></li>
-    </ul>
 <h1><b>Setup (Windows/Linux):</b></h1><br>
 <ol>
     <li>Install dependencies by executing in terminal:
